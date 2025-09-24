@@ -71,7 +71,7 @@ export default function LoginPage({ onLogin }) {
       </form>
 
       {/* Footer Support */}
-      <div className="absolute bottom-8 text-center w-full text-gray-400 text-sm">
+      <div className="absolute bottom-9 text-center w-full text-gray-400 text-sm">
         For support contact:{" "}
         <a
           href="https://wa.me/03398619007"

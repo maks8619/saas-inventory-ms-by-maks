@@ -1,0 +1,168 @@
+import React, { useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "../db/dexieDB";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
+} from "recharts";
+import { motion } from "framer-motion";
+
+export default function AnalyticsPage() {
+  const sales = useLiveQuery(() => db.sales.toArray(), []);
+  const products = useLiveQuery(() => db.products.toArray(), []);
+  const [imeiQuery, setImeiQuery] = useState("");
+
+  if (!sales || !products) return <div>Loading...</div>;
+
+  // 📊 Summary values
+  const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+  const totalProfit = sales.reduce((sum, s) => sum + (s.profit || 0), 0);
+  const totalSales = sales.length;
+
+  // 📈 Daily sales (group by date)
+  const dailyData = Object.values(
+    sales.reduce((acc, s) => {
+      const day = new Date(s.date).toLocaleDateString();
+      if (!acc[day]) acc[day] = { date: day, revenue: 0, profit: 0 };
+      acc[day].revenue += s.total;
+      acc[day].profit += s.profit || 0;
+      return acc;
+    }, {})
+  );
+
+  // 🥧 Profit vs Cost
+  const profitCostData = [
+    { name: "Revenue", value: totalRevenue },
+    { name: "Profit", value: totalProfit }
+  ];
+  const COLORS = ["#3b82f6", "#22c55e"];
+
+  // 🟢🟡🔴 Stock status
+  const getStockStatus = (stock) => {
+    if (stock === 0) return "out";
+    if (stock < 5) return "low";
+    return "good";
+  };
+
+  // 🔍 IMEI Search
+  let imeiResult = null;
+  if (imeiQuery.trim()) {
+    for (const p of products) {
+      if (p.imeiNumbers && p.imeiNumbers.includes(imeiQuery.trim())) {
+        imeiResult = p;
+        break;
+      }
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 📊 Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <motion.div whileHover={{ scale: 1.05 }} className="bg-gray-800 p-4 rounded shadow">
+          <h3 className="text-lg text-gray-400">Total Revenue</h3>
+          <p className="text-2xl font-bold text-blue-400">{totalRevenue.toLocaleString()} Rs</p>
+        </motion.div>
+        <motion.div whileHover={{ scale: 1.05 }} className="bg-gray-800 p-4 rounded shadow">
+          <h3 className="text-lg text-gray-400">Total Profit</h3>
+          <p className="text-2xl font-bold text-green-400">{totalProfit.toLocaleString()} Rs</p>
+        </motion.div>
+        <motion.div whileHover={{ scale: 1.05 }} className="bg-gray-800 p-4 rounded shadow">
+          <h3 className="text-lg text-gray-400">Total Sales</h3>
+          <p className="text-2xl font-bold text-yellow-400">{totalSales}</p>
+        </motion.div>
+      </div>
+
+      {/* 📈 Daily Sales Chart */}
+      <div className="bg-gray-800 p-4 rounded shadow">
+        <h2 className="text-xl font-semibold mb-2">Daily Sales</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={dailyData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#444" />
+            <XAxis dataKey="date" stroke="#aaa" />
+            <YAxis stroke="#aaa" />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="revenue" fill="#3b82f6" />
+            <Bar dataKey="profit" fill="#22c55e" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* 🥧 Profit vs Revenue */}
+      <div className="bg-gray-800 p-4 rounded shadow">
+        <h2 className="text-xl font-semibold mb-2">Revenue vs Profit</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie
+              data={profitCostData}
+              cx="50%" cy="50%"
+              outerRadius={100}
+              fill="#8884d8"
+              dataKey="value"
+              label
+            >
+              {profitCostData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* 🟢 Stock Status */}
+      <div className="bg-gray-800 p-4 rounded shadow">
+        <h2 className="text-xl font-semibold mb-2">Stock Status</h2>
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-gray-600">
+              <th className="p-2">Product</th>
+              <th className="p-2">Stock</th>
+              <th className="p-2">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => {
+              const status = getStockStatus(p.stock);
+              return (
+                <tr key={p.id} className="border-b border-gray-700">
+                  <td className="p-2">{p.name}</td>
+                  <td className="p-2">{p.stock}</td>
+                  <td className="p-2">
+                    {status === "good" && <span className="text-green-400">🟢 Good</span>}
+                    {status === "low" && <span className="text-yellow-400">🟡 Low</span>}
+                    {status === "out" && <span className="text-red-400">🔴 Out</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 🔍 IMEI Search */}
+      <div className="bg-gray-800 p-4 rounded shadow">
+        <h2 className="text-xl font-semibold mb-2">IMEI Lookup</h2>
+        <input
+          type="text"
+          value={imeiQuery}
+          onChange={(e) => setImeiQuery(e.target.value)}
+          placeholder="Enter IMEI..."
+          className="w-full p-2 rounded bg-gray-700 text-white"
+        />
+        {imeiQuery && (
+          <div className="mt-2">
+            {imeiResult ? (
+              <p className="text-green-400">
+                ✅ Found: {imeiResult.name} (Stock: {imeiResult.stock})
+              </p>
+            ) : (
+              <p className="text-red-400">❌ IMEI not found</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

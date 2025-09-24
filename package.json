@@ -1,0 +1,47 @@
+{
+  "name": "pos-app",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "electron/main.js",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "electron": "electron .",
+    "dist": "vite build && electron-builder"
+  },
+  "build": {
+    "appId": "com.maks.posapp",
+    "productName": "Maks POS",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    }
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "auto-prefixer": "^0.4.2",
+    "dexie": "^4.2.0",
+    "dexie-react-hooks": "^4.2.0",
+    "file-saver": "^2.0.5",
+    "framer-motion": "^12.23.16",
+    "prop-types": "^15.8.1",
+    "react": "^19.1.1",
+    "react-csv": "^2.2.2",
+    "react-dom": "^19.1.1",
+    "recharts": "^3.2.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.3",
+    "autoprefixer": "^10.4.21",
+    "electron": "^38.1.2",
+    "electron-builder": "^26.0.12",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "vite": "^7.1.6"
+  }
+}

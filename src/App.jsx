@@ -125,7 +125,7 @@ export default function App() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
               >
-                <SalesPage />
+                <SalesPage branch={branch} />
               </motion.div>
             )}
             {page === "analytics" && (

@@ -2,14 +2,17 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { supabase } from "../supabaseClient"
 import { motion, AnimatePresence } from "framer-motion"
+import Receipt from "./Receipt"; // your new Receipt component
 
-export default function SalesPage() {
+export default function SalesPage({branch}) {
   const [products, setProducts] = useState([])
   const [selectedModel, setSelectedModel] = useState("")
   const [selectedIMEI, setSelectedIMEI] = useState("")
   const [salePriceInput, setSalePriceInput] = useState("")
   const [cart, setCart] = useState([])
   const [loading, setLoading] = useState(true)
+  const [checkingOut, setCheckingOut] = useState(false); // ✅ NEW
+
 
   // ✅ Fetch available products
   const fetchProducts = async () => {
@@ -72,88 +75,62 @@ export default function SalesPage() {
 
   // ✅ Checkout
   const handleCheckout = async () => {
-    if (cart.length === 0) return toast("⚠️ Cart is empty!")
+  if (cart.length === 0) return toast("⚠️ Cart is empty!");
 
-    try {
-      const {
-        data: { user },
-        error: userError
-      } = await supabase.auth.getUser()
-      if (userError || !user) throw new Error("Not logged in")
+  if (checkingOut) return; // ✅ Prevent multiple clicks
+  setCheckingOut(true);    // ✅ Lock the button
 
-      // Insert sales rows
-      const saleRows = cart.map((item) => ({
-        product: item.name,
-        imei: item.imei,
-        costPrice: item.cost_price,
-        salePrice: item.salePrice,
-        profit: item.salePrice - item.cost_price,
-        user_id: user.id // 👈 required for RLS
-      }))
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error("Not logged in");
 
-      const { error: saleError } = await supabase.from("sales").insert(saleRows)
-      if (saleError) throw saleError
+    // map cart items to sales rows
+    const saleRows = cart.map((item) => ({
+      product: item.name,
+      imei: item.imei,
+      costPrice: item.cost_price,
+      salePrice: item.salePrice,
+      profit: item.salePrice - item.cost_price,
+      user_id: user.id
+    }));
 
-      // ❌ Delete products instead of updating
-      const ids = cart.map((c) => c.id)
-      const { error: deleteError } = await supabase
-        .from("products")
-        .delete()
-        .in("id", ids)
+    // insert sales
+    const { error: saleError } = await supabase.from("sales").insert(saleRows);
+    if (saleError) throw saleError;
 
-      if (deleteError) throw deleteError
+    // delete sold products from inventory
+    const ids = cart.map((c) => c.id);
+    const { error: deleteError } = await supabase.from("products").delete().in("id", ids);
+    if (deleteError) throw deleteError;
 
-      printReceipt()
-      toast("✅ Sale completed successfully!")
+    printReceipt();
+    toast("✅ Sale completed successfully!");
 
-      setCart([])
-      setSelectedModel("")
-      setSelectedIMEI("")
-      fetchProducts()
-    } catch (err) {
-      console.error("Checkout failed:", err)
-      toast("❌ " + err.message)
-    }
+    setCart([]);
+    setSelectedModel("");
+    setSelectedIMEI("");
+    fetchProducts();
+  } catch (err) {
+    console.error("Checkout failed:", err);
+    toast("❌ " + err.message);
+  } finally {
+    setCheckingOut(false); // ✅ Unlock the button
   }
+};
+
 
   // ✅ Print receipt
   const printReceipt = () => {
-    const itemsHtml = cart
-      .map(
-        (p) => `<tr>
-          <td>${p.name}</td>
-          <td>${p.imei}</td>
-          <td>Rs.${p.salePrice}</td>
-          <td>Rs.${p.salePrice - p.cost_price}</td>
-        </tr>`
-      )
-      .join("")
+  const receiptData = cart.map((p) => ({
+    model: p.name,
+    imei: p.imei,
+    salePrice: p.salePrice,
+    date: new Date().toLocaleString(),
+  }));
 
-    const html = `
-      <html>
-        <head><title>Receipt</title></head>
-        <body style="font-family: Arial, sans-serif; padding: 16px;">
-          <h2 style="color:#2563eb;">📱 MALIK TRADERS</h2>
-          <p>Date: ${new Date().toLocaleString()}</p>
-          <table border="1" cellpadding="5" cellspacing="0" style="width:100%; margin-top:10px; border-collapse: collapse;">
-            <tr style="background:#f3f4f6;">
-              <th>Model</th>
-              <th>IMEI</th>
-              <th>Sale Price</th>
-              <th>Profit</th>
-            </tr>
-            ${itemsHtml}
-          </table>
-          <h3 style="margin-top:10px;">Total Sale: Rs.${totalSale}</h3>
-          <h3 style="margin-top:5px; color:green;">Profit: Rs.${totalProfit}</h3>
-        </body>
-      </html>
-    `
-    const win = window.open("", "_blank")
-    win.document.write(html)
-    win.document.close()
-    win.print()
-  }
+  // Open the receipt page or render component
+  Receipt.show(receiptData, branch); // you can implement show method to open a printable view
+}
 
   // ✅ Inline toast
   const toast = (msg) => window.alert(msg)
@@ -308,11 +285,16 @@ export default function SalesPage() {
               Profit: Rs.{totalProfit}
             </div>
             <button
-              onClick={handleCheckout}
-              className="mt-3 w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
-            >
-              ✅ Checkout & Save
-            </button>
+  onClick={handleCheckout}
+  disabled={checkingOut} // ✅ disable while processing
+  className={`mt-3 w-full px-6 py-3 rounded-lg font-semibold transition ${
+    checkingOut ? "bg-gray-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+  }`}
+>
+  {checkingOut ? "⏳ Processing..." : "✅ Checkout & Save"}
+</button>
+
+              
           </div>
         )}
       </motion.div>

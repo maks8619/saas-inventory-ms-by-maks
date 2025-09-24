@@ -79,7 +79,7 @@ export default function LoginPage({ onLogin }) {
           rel="noopener noreferrer"
           className="text-blue-400 hover:underline"
         >
-          WhatsApp 03398619007
+          OUR WhatsApp 👈🏻
         </a>
       </div>
     </div>

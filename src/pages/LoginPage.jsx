@@ -27,7 +27,7 @@ export default function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white relative">
       {/* Header */}
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold">Inventory Management System</h1>
@@ -69,6 +69,19 @@ export default function LoginPage({ onLogin }) {
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
+
+      {/* Footer Support */}
+      <div className="absolute bottom-4 text-center w-full text-gray-400 text-sm">
+        For support contact:{" "}
+        <a
+          href="https://wa.me/03398619007"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 hover:underline"
+        >
+          WhatsApp 03398619007
+        </a>
+      </div>
     </div>
   )
 }

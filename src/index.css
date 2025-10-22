@@ -2,10 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* basic app styles */
-html,body,#root { height: 100%; }
-body { @apply bg-gray-900 text-white font-sans; }
-/* Liquid glass hover effect */
+/* Base App Styles */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#0c0a2e] 
+         text-white font-sans antialiased;
+}
+
+/* ============= LIQUID GLASS HOVER ============= */
 .liquid-hover {
   position: relative;
   overflow: hidden;
@@ -27,7 +36,54 @@ body { @apply bg-gray-900 text-white font-sans; }
 }
 
 .liquid-hover:hover::before {
-  width: 200px;
-  height: 200px;
+  width: 180px;
+  height: 180px;
   opacity: 1;
+}
+
+/* ============= GLASS ELEMENTS ============= */
+@layer components {
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-2xl border border-white/20 
+           rounded-2xl shadow-xl p-8 transition-all hover:scale-[1.01];
+  }
+
+  .glass-input {
+    @apply w-full px-4 py-3 rounded-xl bg-white/10 text-white 
+           placeholder-gray-300 border border-white/20
+           focus:outline-none focus:ring-2 focus:ring-blue-400/60
+           focus:border-blue-400 transition-all backdrop-blur-md;
+  }
+
+  .glass-button {
+    @apply w-full py-3 rounded-xl font-semibold text-white text-center 
+           bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600
+           hover:from-blue-400 hover:via-indigo-400 hover:to-purple-500
+           shadow-lg hover:shadow-indigo-500/40 transition-all duration-300;
+  }
+
+  .glass-button:active {
+    @apply scale-95;
+  }
+
+  .glass-title {
+    @apply text-3xl font-bold mb-6 text-center 
+           bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 
+           bg-clip-text text-transparent;
+  }
+}
+
+/* ============= SCROLLBAR STYLING ============= */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #6366f1, #9333ea);
+  border-radius: 10px;
+}
+
+/* ============= RESPONSIVE CONTAINERS ============= */
+.container-glass {
+  @apply flex flex-col items-center justify-center min-h-screen px-4 sm:px-6 lg:px-8;
 }

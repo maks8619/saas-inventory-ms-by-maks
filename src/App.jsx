@@ -10,6 +10,7 @@ export default function App() {
   const [page, setPage] = useState("inventory");
   const [user, setUser] = useState(null);
   const [branch, setBranch] = useState("MAKS OS");
+  const [logo, setLogo] = useState("");
 
   // 🔹 Fetch user & metadata efficiently
   const fetchUser = useCallback(async () => {
@@ -17,6 +18,7 @@ export default function App() {
     const currentUser = data?.user;
     setUser(currentUser);
     setBranch(currentUser?.user_metadata?.branch || "MAKS OS");
+    setLogo(currentUser?.user_metadata?.branchLogo || null);
   }, []);
 
   useEffect(() => {
@@ -26,6 +28,7 @@ export default function App() {
       const currentUser = session?.user || null;
       setUser(currentUser);
       setBranch(currentUser?.user_metadata?.branch || "MAKS OS");
+      setLogo(currentUser?.user_metadata?.branchLogo || null);
     });
 
     return () => listener.subscription.unsubscribe();
@@ -125,7 +128,7 @@ export default function App() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
               >
-                <SalesPage branch={branch} />
+                <SalesPage branch={branch} logo={logo}/>
               </motion.div>
             )}
             {page === "analytics" && (

@@ -28,7 +28,7 @@ const AnalyticsPage = () => {
     const { data, error } = await supabase
       .from("sales")
       .select("*")
-      .order("date", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("❌ Fetch sales error:", error.message);
@@ -39,7 +39,7 @@ const AnalyticsPage = () => {
     setFilteredSales(data || []);
   };
 
-  // 🔍 Search
+  // 🔍 Search by product or IMEI
   useEffect(() => {
     if (!search.trim()) {
       setFilteredSales(sales);
@@ -48,7 +48,7 @@ const AnalyticsPage = () => {
       setFilteredSales(
         sales.filter(
           (s) =>
-            s.product?.toLowerCase().includes(query) ||
+            s.product_name?.toLowerCase().includes(query) ||
             s.imei?.toLowerCase().includes(query)
         )
       );
@@ -69,11 +69,13 @@ const AnalyticsPage = () => {
 
   // 📅 Today’s filter
   const today = new Date().toISOString().split("T")[0];
-  const dailySales = filteredSales.filter((s) => s.date?.startsWith(today));
+  const dailySales = filteredSales.filter((s) =>
+    s.created_at?.startsWith(today)
+  );
 
   // Totals
   const calcTotals = (data) => ({
-    totalSales: data.reduce((sum, s) => sum + Number(s.salePrice || 0), 0),
+    totalSales: data.reduce((sum, s) => sum + Number(s.sale_price || 0), 0),
     totalProfit: data.reduce((sum, s) => sum + Number(s.profit || 0), 0),
   });
   const dailyTotals = calcTotals(dailySales);
@@ -83,9 +85,9 @@ const AnalyticsPage = () => {
   const groupByDate = (data) => {
     const grouped = {};
     data.forEach((s) => {
-      const date = s.date?.split("T")[0] || "Unknown";
+      const date = s.created_at?.split("T")[0] || "Unknown";
       if (!grouped[date]) grouped[date] = { date, sales: 0, profit: 0 };
-      grouped[date].sales += Number(s.salePrice || 0);
+      grouped[date].sales += Number(s.sale_price || 0);
       grouped[date].profit += Number(s.profit || 0);
     });
     return Object.values(grouped).sort(
@@ -124,13 +126,19 @@ const AnalyticsPage = () => {
         <div className="backdrop-blur-2xl bg-white/10 rounded-xl p-4 text-center border border-white/10">
           <p className="text-gray-300">Total Sales</p>
           <h2 className="text-xl font-bold text-blue-400">
-            Rs {activeTab === "daily" ? dailyTotals.totalSales : allTotals.totalSales}
+            Rs{" "}
+            {activeTab === "daily"
+              ? dailyTotals.totalSales
+              : allTotals.totalSales}
           </h2>
         </div>
         <div className="backdrop-blur-2xl bg-white/10 rounded-xl p-4 text-center border border-white/10">
           <p className="text-gray-300">Total Profit</p>
           <h2 className="text-xl font-bold text-green-400">
-            Rs {activeTab === "daily" ? dailyTotals.totalProfit : allTotals.totalProfit}
+            Rs{" "}
+            {activeTab === "daily"
+              ? dailyTotals.totalProfit
+              : allTotals.totalProfit}
           </h2>
         </div>
       </div>
@@ -171,13 +179,23 @@ const AnalyticsPage = () => {
                   i % 2 === 0 ? "bg-white/5" : "bg-white/0"
                 } hover:bg-white/20 transition`}
               >
-                <td className="border border-white/10 p-2">{s.product || "N/A"}</td>
-                <td className="border border-white/10 p-2">{s.imei || "N/A"}</td>
-                <td className="border border-white/10 p-2">Rs {s.costPrice || 0}</td>
-                <td className="border border-white/10 p-2 text-blue-400">Rs {s.salePrice || 0}</td>
-                <td className="border border-white/10 p-2 text-green-400">Rs {s.profit || 0}</td>
                 <td className="border border-white/10 p-2">
-                  {s.date ? new Date(s.date).toLocaleString() : "N/A"}
+                  {s.product_name || "N/A"}
+                </td>
+                <td className="border border-white/10 p-2">{s.imei || "N/A"}</td>
+                <td className="border border-white/10 p-2">
+                  Rs {s.cost_price || 0}
+                </td>
+                <td className="border border-white/10 p-2 text-blue-400">
+                  Rs {s.sale_price || 0}
+                </td>
+                <td className="border border-white/10 p-2 text-green-400">
+                  Rs {s.profit || 0}
+                </td>
+                <td className="border border-white/10 p-2">
+                  {s.created_at
+                    ? new Date(s.created_at).toLocaleString()
+                    : "N/A"}
                 </td>
                 <td className="border p-2 text-center">
                   <button
@@ -205,8 +223,19 @@ const AnalyticsPage = () => {
             <YAxis stroke="#aaa" />
             <Tooltip contentStyle={{ backgroundColor: "#111", border: "none" }} />
             <Legend />
-            <Bar dataKey="sales" fill="#60a5fa" barSize={40} radius={[6, 6, 0, 0]} />
-            <Line type="monotone" dataKey="profit" stroke="#34d399" strokeWidth={3} dot={{ r: 4 }} />
+            <Bar
+              dataKey="sales"
+              fill="#60a5fa"
+              barSize={40}
+              radius={[6, 6, 0, 0]}
+            />
+            <Line
+              type="monotone"
+              dataKey="profit"
+              stroke="#34d399"
+              strokeWidth={3}
+              dot={{ r: 4 }}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -234,13 +234,17 @@ export default function InventoryPage() {
             />
           ) : (
             <input
-              className="p-3 rounded-xl bg-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-              placeholder="Quantity"
-              type="number"
-              min="1"
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: Number(e.target.value || 1) })}
-            />
+  className="p-3 rounded-xl bg-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+  placeholder="Quantity"
+  type="number"
+  min="0"
+  value={form.quantity === null ? "" : form.quantity}
+  onChange={(e) => {
+    const val = e.target.value === "" ? null : Number(e.target.value);
+    setForm({ ...form, quantity: val });
+  }}
+/>
+
           )}
 
           <input
@@ -333,7 +337,61 @@ export default function InventoryPage() {
                       <div className="text-sm text-gray-400">{qty} units</div>
                       {sample && typeof sample.quantity !== "undefined" && <div className="text-xs text-gray-500">(tracked with quantity)</div>}
                     </div>
-                    <span className="text-sm text-gray-300">—</span>
+                    <div className="flex gap-2">
+  {/* ➖ Minus / Remove Quantity */}
+  <button
+    onClick={async () => {
+      const removeQty = parseInt(prompt(`Enter quantity to remove from ${name}:`), 10);
+      if (isNaN(removeQty) || removeQty <= 0) return;
+      
+      const { data: user } = await supabase.auth.getUser();
+      const userId = user?.user?.id;
+      if (!userId) return pushToast("❌ User not found");
+
+      // fetch existing accessory
+      const { data: existing, error: fetchError } = await supabase
+        .from("products")
+        .select("id, quantity")
+        .eq("user_id", userId)
+        .eq("category", "accessory")
+        .eq("name", name)
+        .maybeSingle();
+
+      if (fetchError || !existing) {
+        pushToast("❌ Failed to fetch accessory");
+        return;
+      }
+
+      const currentQty = existing.quantity || 0;
+      const newQty = Math.max(currentQty - removeQty, 0);
+
+      if (newQty === 0) {
+        // delete if fully removed
+        const { error: delError } = await supabase
+          .from("products")
+          .delete()
+          .eq("id", existing.id);
+        if (delError) pushToast("❌ Error deleting product");
+        else pushToast(`🗑️ Removed all ${name} (now 0 left)`);
+      } else {
+        // update new quantity
+        const { error: updateError } = await supabase
+          .from("products")
+          .update({ quantity: newQty })
+          .eq("id", existing.id);
+        if (updateError) pushToast("❌ Failed to update quantity");
+        else pushToast(`➖ Removed ${removeQty}, now ${newQty} left`);
+      }
+
+      // refresh data
+      await fetchProducts(userId);
+    }}
+    className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded-lg text-xs font-semibold transition"
+  >
+    ➖ Minus
+  </button>
+</div>
+
                   </div>
                 ))}
               </div>

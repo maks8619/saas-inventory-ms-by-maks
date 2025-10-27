@@ -109,51 +109,76 @@ export default function InventoryPage() {
 
   /* ---------- Add Product ---------- */
   const addProduct = async () => {
-    if (!form.name.trim() || !form.cost_price) return pushToast("⚠️ Name & cost required");
-    if (form.category === "phone" && (!form.imei || form.imei.length !== 15)) return pushToast("❌ IMEI required (15 digits)");
-    setSubmitting(true);
+  if (!form.name.trim() || !form.cost_price)
+    return pushToast("⚠️ Name & cost required");
+  if (form.category === "phone" && (!form.imei || form.imei.length !== 15))
+    return pushToast("❌ IMEI required (15 digits)");
 
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      if (!userId) throw new Error("Not logged in");
+  setSubmitting(true);
 
-      if (form.category === "phone") {
-        const { data: exists } = await supabase.from("products").select("id").eq("imei", form.imei.trim()).eq("user_id", userId).maybeSingle();
-        if (exists) return pushToast("❌ IMEI already exists");
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    if (!userId) throw new Error("Not logged in");
+
+    if (form.category === "phone") {
+      const { data: exists } = await supabase
+        .from("products")
+        .select("id")
+        .eq("imei", form.imei.trim())
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (exists) return pushToast("❌ IMEI already exists");
+    }
+
+    if (form.category === "accessory") {
+      const { data: existing } = await supabase
+        .from("products")
+        .select("id, quantity")
+        .eq("user_id", userId)
+        .eq("category", "accessory")
+        .eq("name", form.name.trim())
+        .maybeSingle();
+
+      if (existing && typeof existing.quantity !== "undefined") {
+        const newQty = (existing.quantity || 0) + (parseInt(form.quantity, 10) || 1);
+        const { error } = await supabase
+          .from("products")
+          .update({ quantity: newQty })
+          .eq("id", existing.id);
+        if (error) throw error;
+
+        pushToast("✅ Accessory quantity updated");
+        setForm({ name: "", imei: "", cost_price: "", category: "phone", quantity: 1 });
+        return;
       }
+    }
 
-      if (form.category === "accessory") {
-        const { data: existing } = await supabase.from("products").select("id, quantity").eq("user_id", userId).eq("category", "accessory").eq("name", form.name.trim()).maybeSingle();
-        if (existing && typeof existing.quantity !== "undefined") {
-          const newQty = (existing.quantity || 0) + (parseInt(form.quantity, 10) || 1);
-          const { error } = await supabase.from("products").update({ quantity: newQty }).eq("id", existing.id);
-          if (error) throw error;
-          pushToast("✅ Accessory quantity updated");
-          return setForm({ name: "", imei: "", cost_price: "", category: "phone", quantity: 1 });
-        }
-      }
+    // ✅ FIXED: include quantity + user_id explicitly
+    const insertRow = {
+      name: form.name.trim(),
+      imei: form.imei?.trim() || null,
+      category: form.category,
+      cost_price: parseFloat(form.cost_price),
+      quantity: parseInt(form.quantity, 10) || 1,
+      user_id: userId,
+      status: "in_stock",
+    };
 
-      const insertRow = { name: form.name.trim(), imei: form.imei?.trim() || null, category: form.category, cost_price: parseFloat(form.cost_price) };
-      const { error } = await supabase.from("products").insert([insertRow]);
-      if (error) pushToast("❌ Error adding product: " + error.message);
-      else pushToast("✅ Product added");
-      await fetchProducts(userId);
-      setForm({ name: "", imei: "", cost_price: "", category: "phone", quantity: 1 });
-    } catch (err) { pushToast("❌ Add failed: " + (err.message || err)); }
-    finally { setSubmitting(false); }
-  };
+    const { error } = await supabase.from("products").insert([insertRow]);
+    if (error) pushToast("❌ Error adding product: " + error.message);
+    else pushToast("✅ Product added");
 
-  const deleteProduct = async (id) => {
-    if (!confirm("Delete this product?")) return;
-    try {
-      const { data } = await supabase.auth.getUser();
-      const userId = data?.user?.id;
-      const { error } = await supabase.from("products").delete().eq("id", id).eq("user_id", userId);
-      if (error) pushToast("❌ Delete failed");
-      else { pushToast("✅ Deleted"); setProducts((prev) => prev.filter((p) => p.id !== id)); }
-    } catch { pushToast("❌ Delete failed"); }
-  };
+    await fetchProducts(userId);
+    setForm({ name: "", imei: "", cost_price: "", category: "phone", quantity: 1 });
+  } catch (err) {
+    pushToast("❌ Add failed: " + (err.message || err));
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   /* ---------- Derived Data ---------- */
   const { phonesByModel, accessoriesSummary, phonesCount, accessoriesCount } = useMemo(() => {
